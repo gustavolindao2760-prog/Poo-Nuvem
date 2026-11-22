@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Endereços</title>
+</head>
+<body>
+
+    <h1>Cadastro de Endereços</h1>
+
+    <h2>Consultar CEP</h2>
+    <input type="text" id="cep" placeholder="Digite o CEP">
+    <button onclick="consultarCep()">Consultar ViaCEP</button>
+
+    <h2>Dados do endereço</h2>
+    <input id="logradouro" placeholder="Logradouro"><br><br>
+    <input id="complemento" placeholder="Complemento"><br><br>
+    <input id="bairro" placeholder="Bairro"><br><br>
+    <input id="localidade" placeholder="Cidade"><br><br>
+    <input id="uf" placeholder="UF"><br><br>
+
+    <button onclick="cadastrar()">Cadastrar endereço</button>
+    <button onclick="limpar()">Limpar campos</button>
+
+    <h2>Endereços cadastrados</h2>
+    <button onclick="listar()">Atualizar lista</button>
+    <ul id="lista"></ul>
+
+    <script>
+        let idEdicao = null;
+
+        async function consultarCep() {
+            const cep = document.getElementById("cep").value.replace(/\D/g, "");
+
+            if (cep.length !== 8) {
+                alert("Digite um CEP válido!");
+                return;
+            }
+
+            const resposta = await fetch(`/cep/${cep}`);
+            const dados = await resposta.json();
+
+            if (dados.erro) {
+                alert("CEP não encontrado!");
+                return;
+            }
+
+            document.getElementById("logradouro").value = dados.logradouro || "";
+            document.getElementById("complemento").value = dados.complemento || "";
+            document.getElementById("bairro").value = dados.bairro || "";
+            document.getElementById("localidade").value = dados.localidade || "";
+            document.getElementById("uf").value = dados.uf || "";
+        }
+
+        async function cadastrar() {
+            const endereco = {
+                cep: document.getElementById("cep").value,
+                logradouro: document.getElementById("logradouro").value,
+                complemento: document.getElementById("complemento").value,
+                bairro: document.getElementById("bairro").value,
+                localidade: document.getElementById("localidade").value,
+                uf: document.getElementById("uf").value
+            };
+
+            const url = idEdicao === null
+                ? "/enderecos"
+                : `/enderecos/${idEdicao}`;
+
+            const metodo = idEdicao === null ? "POST" : "PUT";
+
+            const resposta = await fetch(url, {
+                method: metodo,
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(endereco)
+            });
+
+            if (!resposta.ok) {
+                alert("Erro ao salvar endereço!");
+                return;
+            }
+
+            alert(idEdicao === null
+                ? "Endereço cadastrado com sucesso!"
+                : "Endereço atualizado com sucesso!");
+
+            limpar();
+            listar();
+        }
+
+        async function listar() {
+            const resposta = await fetch("/enderecos");
+            const enderecos = await resposta.json();
+
+            const lista = document.getElementById("lista");
+            lista.innerHTML = "";
+
+            enderecos.forEach(endereco => {
+                const item = document.createElement("li");
+
+                item.textContent =
+                    `${endereco.id} - ${endereco.cep} - ${endereco.logradouro}, ${endereco.localidade}/${endereco.uf} `;
+
+                const editar = document.createElement("button");
+                editar.textContent = "Editar";
+                editar.onclick = () => prepararEdicao(endereco);
+
+                const excluir = document.createElement("button");
+                excluir.textContent = "Excluir";
+                excluir.onclick = () => excluirEndereco(endereco.id);
+
+                item.appendChild(editar);
+                item.appendChild(excluir);
+                lista.appendChild(item);
+            });
+        }
+
+        function prepararEdicao(endereco) {
+            idEdicao = endereco.id;
+
+            document.getElementById("cep").value = endereco.cep || "";
+            document.getElementById("logradouro").value = endereco.logradouro || "";
+            document.getElementById("complemento").value = endereco.complemento || "";
+            document.getElementById("bairro").value = endereco.bairro || "";
+            document.getElementById("localidade").value = endereco.localidade || "";
+            document.getElementById("uf").value = endereco.uf || "";
+
+            alert("Altere os dados e clique em Salvar alterações.");
+            document.querySelector("button[onclick='cadastrar()']").textContent = "Salvar alterações";
+        }
+
+        async function excluirEndereco(id) {
+            if (!confirm("Deseja realmente excluir este endereço?")) {
+                return;
+            }
+
+            const resposta = await fetch(`/enderecos/${id}`, {
+                method: "DELETE"
+            });
+
+            if (!resposta.ok) {
+                alert("Erro ao excluir endereço!");
+                return;
+            }
+
+            alert("Endereço excluído com sucesso!");
+            listar();
+        }
+
+        function limpar() {
+            idEdicao = null;
+
+            document.getElementById("cep").value = "";
+            document.getElementById("logradouro").value = "";
+            document.getElementById("complemento").value = "";
+            document.getElementById("bairro").value = "";
+            document.getElementById("localidade").value = "";
+            document.getElementById("uf").value = "";
+
+            document.querySelector("button[onclick='cadastrar()']").textContent = "Cadastrar endereço";
+        }
+
+        listar();
+    </script>
+
+</body>
+</html>
